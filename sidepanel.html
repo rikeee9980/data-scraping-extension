@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Extractor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <svg class="extractor-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Top Cylinder -->
+          <ellipse cx="11" cy="5" rx="7" ry="2.5" fill="url(#brand-grad)" />
+          <!-- Middle Cylinder -->
+          <path d="M4 5V10C4 11.38 7.13 12.5 11 12.5C12.38 12.5 13.68 12.35 14.81 12.08V9.54C13.67 9.83 12.38 10 11 10C7.13 10 4 8.88 4 7.5V5Z" fill="url(#brand-grad)" opacity="0.9" />
+          <!-- Bottom Cylinder -->
+          <path d="M4 10V15C4 16.38 7.13 17.5 11 17.5C12.38 17.5 13.68 17.35 14.81 17.08V14.54C13.67 14.83 12.38 15 11 15C7.13 15 4 13.88 4 12.5V10Z" fill="url(#brand-grad)" opacity="0.8" />
+          <!-- Extraction Arrow -->
+          <path d="M19 8V15H16L20 19L24 15H21V8H19Z" fill="url(#arrow-grad)" />
+          <defs>
+            <linearGradient id="brand-grad" x1="4" y1="2.5" x2="18" y2="17.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ec4899" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+            <linearGradient id="arrow-grad" x1="16" y1="8" x2="24" y2="19" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ec4899" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1 class="app-title">Data Extractor</h1>
+      </div>
+      <span class="version-badge">v1.0</span>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <!-- Compact Header Row containing Active Tab & Settings -->
+      <section class="control-header-row">
+        <!-- Active Tab Card -->
+        <div class="status-badge" id="tab-status-card">
+          <span class="status-indicator active"></span>
+          <div class="status-text-container">
+            <span class="status-text" id="webpage-title">Loading current page...</span>
+            <span class="status-subtext" id="webpage-url">Checking address...</span>
+          </div>
+        </div>
+
+        <!-- Walkthrough Settings Trigger -->
+        <div class="compact-settings">
+          <button class="btn-settings-toggle" id="btn-settings-toggle" aria-label="Toggle Speed Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="gear-icon">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+          <div class="settings-dropdown-panel hidden" id="settings-panel">
+            <label for="select-speed" class="setting-label">Walkthrough Speed</label>
+            <div class="select-wrapper">
+              <select id="select-speed" class="select-control">
+                <option value="0">Instant (No Walkthrough)</option>
+                <option value="100">Fast (100ms / item)</option>
+                <option value="300">Balanced (300ms / item)</option>
+                <option value="600" selected>Thorough (600ms / item)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scraping Control Panel -->
+      <section class="controls-section">
+        <button class="btn btn-primary" id="btn-auto-scrape" aria-label="Auto Scrape Page">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Auto Scrape Page
+        </button>
+        
+        <button class="btn btn-secondary" id="btn-visual-select" aria-label="Toggle Point-and-Click Selector">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+          <span>Visual Selector</span>
+        </button>
+      </section>
+
+      <!-- Selector Active Status Alert -->
+      <div class="selector-active-banner hidden" id="selector-banner">
+        <div class="banner-content">
+          <div class="spinner"></div>
+          <span>Visual Selector Active. Click & drag to crop a range, or click an element.</span>
+        </div>
+        <button class="btn-close" id="btn-cancel-selector" aria-label="Cancel Selector">Cancel</button>
+      </div>
+
+      <!-- Scraping Active Status Alert -->
+      <div class="scrape-active-banner hidden" id="scrape-banner">
+        <div class="scrape-banner-content">
+          <div class="scrape-spinner"></div>
+          <span id="scrape-progress-text">Scraping elements...</span>
+        </div>
+        <button class="btn-stop" id="btn-stop-scrape" aria-label="Stop & Save">Stop & Save</button>
+      </div>
+
+      <!-- Pagination Prompt Alert Banner -->
+      <div class="scrape-active-banner hidden" id="pagination-prompt-banner">
+        <div class="scrape-banner-content">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+          <span>Page 1 complete. Scrape next pages?</span>
+        </div>
+        <div class="pagination-btn-group">
+          <button class="btn-pagination btn-pagination-stop" id="btn-pagination-stop" aria-label="Stop & Save Results">Stop & Save</button>
+          <button class="btn-pagination btn-pagination-continue" id="btn-pagination-continue" aria-label="Continue to Next Page">Continue Scrape</button>
+        </div>
+      </div>
+
+
+      <!-- Result Tabs Layout -->
+      <section class="results-container">
+        <div class="tabs-nav" role="tablist">
+          <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="preview-panel" id="tab-preview">
+            Preview
+          </button>
+          <button class="tab-btn" role="tab" aria-selected="false" aria-controls="raw-panel" id="tab-raw">
+            Optimized MD
+          </button>
+        </div>
+
+        <div class="tabs-content">
+          <!-- Preview Tab -->
+          <div class="tab-panel active" id="preview-panel" role="tabpanel" aria-labelledby="tab-preview">
+            <div class="empty-state" id="preview-empty">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <p>No data extracted yet.</p>
+              <p class="subtitle">Click "Auto Scrape Page" or use "Visual Selector" to capture data.</p>
+            </div>
+            
+            <!-- Dynamic Content Area -->
+            <div class="scraped-content-view hidden" id="preview-data-view">
+              <div id="youtube-specific-data" class="hidden">
+                <!-- Specialized YouTube data gets injected here -->
+              </div>
+              <div id="general-scraped-data">
+                <!-- General page data details (Metadata, lists, etc) -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw Markdown Tab -->
+          <div class="tab-panel" id="raw-panel" role="tabpanel" aria-labelledby="tab-raw">
+            <div class="empty-state" id="markdown-empty">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+                <line x1="9" y1="13" x2="15" y2="13"></line>
+                <line x1="9" y1="17" x2="11" y2="17"></line>
+              </svg>
+              <p>Optimized Markdown will show here.</p>
+            </div>
+            <div class="markdown-view-container hidden" id="markdown-content-view">
+              <pre class="markdown-pre"><code id="markdown-text-code"></code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Controls (Glows & Actions) -->
+    <footer class="app-footer">
+      <div class="footer-buttons">
+        <button class="btn btn-primary btn-block btn-glowing disabled" id="btn-download" disabled aria-label="Download Markdown File">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download (.md)
+        </button>
+        <button class="btn btn-secondary disabled" id="btn-copy" disabled aria-label="Copy to Clipboard" style="padding: 12px 10px;">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy
+        </button>
+      </div>
+    </footer>
+
+    <!-- Custom Success Toast Notification -->
+    <div class="toast-notification hidden" id="copy-toast" role="status" aria-live="polite">
+      <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span id="toast-message">Copied to Clipboard!</span>
+    </div>
+
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
