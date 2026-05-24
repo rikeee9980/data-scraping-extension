@@ -187,14 +187,21 @@
     <!-- Footer Controls (Glows & Actions) -->
     <footer class="app-footer">
       <div class="footer-buttons">
-        <button class="btn btn-primary btn-block btn-glowing disabled" id="btn-download" disabled aria-label="Download Markdown File">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          Download (.md)
-        </button>
+        <div class="dropdown-download">
+          <button class="btn btn-primary btn-block btn-glowing disabled" id="btn-download" disabled aria-label="Download Data" aria-expanded="false" aria-haspopup="true">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download</span>
+            <span class="dropdown-arrow">▲</span>
+          </button>
+          <div class="dropdown-menu-download hidden" id="download-menu" role="menu">
+            <button class="dropdown-item" id="btn-download-md" role="menuitem">Markdown (.md)</button>
+            <button class="dropdown-item" id="btn-download-json" role="menuitem">JSON (.json)</button>
+          </div>
+        </div>
         <button class="btn btn-secondary disabled" id="btn-copy" disabled aria-label="Copy to Clipboard" style="padding: 12px 10px;">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>

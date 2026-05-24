@@ -39,6 +39,9 @@ const markdownContentView = document.getElementById("markdown-content-view");
 const markdownTextCode = document.getElementById("markdown-text-code");
 
 const btnDownload = document.getElementById("btn-download");
+const downloadMenu = document.getElementById("download-menu");
+const btnDownloadMd = document.getElementById("btn-download-md");
+const btnDownloadJson = document.getElementById("btn-download-json");
 const btnCopy = document.getElementById("btn-copy");
 const copyToast = document.getElementById("copy-toast");
 const toastMessage = document.getElementById("toast-message");
@@ -117,23 +120,57 @@ function setupEventListeners() {
   tabRaw.addEventListener("click", () => switchTab("raw"));
 
   // Action buttons
-  btnDownload.addEventListener("click", downloadMarkdownFile);
+  btnDownload.addEventListener("click", (e) => {
+    if (btnDownload.classList.contains("disabled") || btnDownload.disabled) return;
+    e.stopPropagation();
+    downloadMenu.classList.toggle("hidden");
+    btnDownload.classList.toggle("active");
+  });
+
+  if (btnDownloadMd) {
+    btnDownloadMd.addEventListener("click", (e) => {
+      e.stopPropagation();
+      downloadMarkdownFile();
+      downloadMenu.classList.add("hidden");
+      btnDownload.classList.remove("active");
+    });
+  }
+
+  if (btnDownloadJson) {
+    btnDownloadJson.addEventListener("click", (e) => {
+      e.stopPropagation();
+      downloadJsonFile();
+      downloadMenu.classList.add("hidden");
+      btnDownload.classList.remove("active");
+    });
+  }
+
   btnCopy.addEventListener("click", copyToClipboard);
 
-  // Settings toggle
+  // Settings toggle click
   if (btnSettingsToggle && settingsPanel) {
     btnSettingsToggle.addEventListener("click", (e) => {
       e.stopPropagation();
       settingsPanel.classList.toggle("hidden");
       btnSettingsToggle.classList.toggle("active");
     });
-    document.addEventListener("click", (e) => {
+  }
+
+  // Global click outside to close menus
+  document.addEventListener("click", (e) => {
+    if (settingsPanel && btnSettingsToggle) {
       if (!settingsPanel.contains(e.target) && e.target !== btnSettingsToggle && !btnSettingsToggle.contains(e.target)) {
         settingsPanel.classList.add("hidden");
         btnSettingsToggle.classList.remove("active");
       }
-    });
-  }
+    }
+    if (downloadMenu && btnDownload) {
+      if (!downloadMenu.contains(e.target) && e.target !== btnDownload && !btnDownload.contains(e.target)) {
+        downloadMenu.classList.add("hidden");
+        btnDownload.classList.remove("active");
+      }
+    }
+  });
 }
 
 // Resets sidepanel scraping results state on page change
@@ -150,7 +187,9 @@ function resetScraperState() {
   
   // Disable actions
   btnDownload.classList.add("disabled");
+  btnDownload.classList.remove("active");
   btnDownload.disabled = true;
+  if (downloadMenu) downloadMenu.classList.add("hidden");
   btnCopy.classList.add("disabled");
   btnCopy.disabled = true;
 
@@ -879,6 +918,45 @@ function downloadMarkdownFile() {
     alert("Could not download file. Please use the Copy button instead.");
   }
 }
+
+// Trigger Local Download of JSON (.json) File
+function downloadJsonFile() {
+  if (!lastScrapedData) return;
+
+  try {
+    const jsonString = JSON.stringify(lastScrapedData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary link element to trigger browser download
+    const link = document.createElement("a");
+    link.href = url;
+    
+    // Sanitize current page title for filename
+    const sanitizedTitle = currentTabTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .substring(0, 50)
+      .replace(/^_+|_+$/g, "");
+      
+    link.download = `${sanitizedTitle || "scraped_data"}.json`;
+    
+    // Trigger download click
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    // Show success toast
+    showToast("Downloaded JSON File!");
+  } catch (error) {
+    console.error("Failed to download JSON:", error);
+    alert("Could not download JSON file.");
+  }
+}
+
 
 // Copy to clipboard with success toast animation
 async function copyToClipboard() {
