@@ -6,6 +6,9 @@ let currentTabTitle = "";
 let lastScrapedData = null;
 let optimizedMarkdown = "";
 
+// Shopify state
+let currentShopifyProducts = [];
+
 // DOM Elements
 const btnSettingsToggle = document.getElementById("btn-settings-toggle");
 const settingsPanel = document.getElementById("settings-panel");
@@ -46,10 +49,19 @@ const btnCopy = document.getElementById("btn-copy");
 const copyToast = document.getElementById("copy-toast");
 const toastMessage = document.getElementById("toast-message");
 
+// Shopify DOM Elements
+const shopifyCatalogView = document.getElementById("shopify-catalog-view");
+const shopifySearchInput = document.getElementById("shopify-search-input");
+const shopifySortSelect = document.getElementById("shopify-sort-select");
+const shopifyOfflineBadge = document.getElementById("shopify-offline-badge");
+const offlineBadgeText = document.getElementById("offline-badge-text");
+const shopifyProductGrid = document.getElementById("shopify-product-grid");
+
 // Initialize UI
 document.addEventListener("DOMContentLoaded", async () => {
   await updateActiveTabInfo();
   setupEventListeners();
+  await checkAndLoadShopifyCache();
 });
 
 // Update the current active tab info card
@@ -90,12 +102,15 @@ async function updateActiveTabInfo() {
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   await updateActiveTabInfo();
   resetScraperState();
+  await checkAndLoadShopifyCache();
 });
 
 // Track active tab URL updates
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (tabId === currentTabId && changeInfo.status === "complete") {
     await updateActiveTabInfo();
+    resetScraperState();
+    await checkAndLoadShopifyCache();
   }
 });
 
@@ -156,6 +171,20 @@ function setupEventListeners() {
     });
   }
 
+  // Shopify search and sort event listeners
+  if (shopifySearchInput) {
+    shopifySearchInput.addEventListener("input", renderShopifyCatalog);
+  }
+  if (shopifySortSelect) {
+    shopifySortSelect.addEventListener("change", () => {
+      if (currentTabUrl) {
+        const sortVal = shopifySortSelect.value;
+        chrome.storage.local.set({ [`sort_${currentTabUrl}`]: sortVal }).catch(err => console.error(err));
+      }
+      renderShopifyCatalog();
+    });
+  }
+
   // Global click outside to close menus
   document.addEventListener("click", (e) => {
     if (settingsPanel && btnSettingsToggle) {
@@ -203,6 +232,14 @@ function resetScraperState() {
   // Deactivate scrape banner if open
   scrapeBanner.classList.add("hidden");
   resetScrapeButton();
+
+  // Deactivate Shopify Catalog View
+  if (shopifyCatalogView) shopifyCatalogView.classList.add("hidden");
+  if (shopifyOfflineBadge) shopifyOfflineBadge.classList.add("hidden");
+  if (shopifySearchInput) shopifySearchInput.value = "";
+  if (shopifySortSelect) shopifySortSelect.value = "default";
+  if (shopifyProductGrid) shopifyProductGrid.innerHTML = "";
+  currentShopifyProducts = [];
 }
 
 // Switch tabs inside sidepanel
@@ -375,7 +412,33 @@ function showScrapingError(msg) {
 }
 
 // Build clean, token-efficient Markdown and update UI views
-function displayScrapedData(data) {
+async function displayScrapedData(data) {
+  // If it's a Shopify Collection, handle caching and price comparison
+  if (data.isShopifyCollection && data.products) {
+    try {
+      const cacheKey = `shopify_cache_${data.url}`;
+      const cacheResult = await chrome.storage.local.get([cacheKey]);
+      const prevCached = cacheResult[cacheKey];
+      
+      let updatedProducts = data.products;
+      if (prevCached && prevCached.products) {
+        updatedProducts = computePriceDrops(data.products, prevCached.products);
+      }
+      
+      data.products = updatedProducts;
+      
+      if (!data.timestamp) {
+        data.timestamp = Date.now();
+        await chrome.storage.local.set({ [cacheKey]: data });
+        if (shopifyOfflineBadge) {
+          shopifyOfflineBadge.classList.add("hidden");
+        }
+      }
+    } catch (e) {
+      console.error("Error managing Shopify cache:", e);
+    }
+  }
+
   lastScrapedData = data;
 
   // Show data view and hide empty states
@@ -447,9 +510,223 @@ function displaySingleElement(element) {
 }
 
 // Formats preview DOM elements
+// Render Shopify Products Grid
+function renderShopifyCatalog() {
+  if (!shopifyProductGrid || !currentShopifyProducts) return;
+  
+  const searchQuery = shopifySearchInput ? shopifySearchInput.value.toLowerCase().trim() : "";
+  const sortOption = shopifySortSelect ? shopifySortSelect.value : "default";
+  
+  // 1. Filter
+  let filtered = currentShopifyProducts.filter(p => {
+    return p.title.toLowerCase().includes(searchQuery) || p.vendor.toLowerCase().includes(searchQuery);
+  });
+  
+  // 2. Sort
+  if (sortOption === "price-low") {
+    filtered.sort((a, b) => a.price - b.price);
+  } else if (sortOption === "price-high") {
+    filtered.sort((a, b) => b.price - a.price);
+  } else if (sortOption === "alphabetical") {
+    filtered.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  
+  // 3. Render Grid
+  if (filtered.length === 0) {
+    shopifyProductGrid.innerHTML = `
+      <div style="grid-column: 1/-1; padding: 40px 20px; text-align: center; color: var(--text-muted);">
+        No products match your search.
+      </div>
+    `;
+    return;
+  }
+  
+  shopifyProductGrid.innerHTML = filtered.map((p, index) => {
+    let badgesHTML = "";
+    if (p.priceDropped && p.oldPrice) {
+      const dropDiff = Math.round(p.oldPrice - p.price);
+      badgesHTML += `<span class="price-drop-badge" title="Was Rs. ${p.oldPrice}">↓ Rs. ${dropDiff} Drop</span>`;
+    }
+    
+    if (p.compareAtPrice && p.compareAtPrice > p.price) {
+      const pct = Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100);
+      badgesHTML += `<span class="discount-badge">${pct}% OFF</span>`;
+    }
+    
+    const comparePriceHTML = p.compareAtPrice ? `<span class="product-compare-price">Rs. ${Math.round(p.compareAtPrice)}</span>` : "";
+    
+    return `
+      <div class="product-card" tabindex="0" data-url="${p.productUrl}" data-index="${index}" role="listitem">
+        ${badgesHTML ? `<div class="product-badges">${badgesHTML}</div>` : ""}
+        <div class="product-image-container">
+          <img src="${p.imageUrl || 'https://via.placeholder.com/150'}" class="product-image" alt="${p.title}" loading="lazy">
+        </div>
+        <div class="product-info">
+          <span class="product-vendor">${p.vendor}</span>
+          <span class="product-title" title="${p.title}">${p.title}</span>
+          <div class="product-price-row">
+            <span class="product-price">Rs. ${Math.round(p.price)}</span>
+            ${comparePriceHTML}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  
+  setupGridKeyboardNavigation();
+}
+
+// Compute price changes and flags
+function computePriceDrops(freshProducts, cachedProducts) {
+  if (!cachedProducts || cachedProducts.length === 0) return freshProducts;
+  
+  const cachedMap = new Map(cachedProducts.map(p => [p.id, p]));
+  let dropCount = 0;
+  
+  const updatedProducts = freshProducts.map(p => {
+    const oldP = cachedMap.get(p.id);
+    if (oldP) {
+      if (p.price < oldP.price) {
+        dropCount++;
+        return {
+          ...p,
+          priceDropped: true,
+          oldPrice: oldP.price
+        };
+      } else if (oldP.priceDropped && p.price === oldP.price) {
+        return {
+          ...p,
+          priceDropped: true,
+          oldPrice: oldP.oldPrice
+        };
+      }
+    }
+    return p;
+  });
+  
+  if (dropCount > 0) {
+    showToast(`${dropCount} product${dropCount === 1 ? '' : 's'} dropped in price!`);
+  }
+  
+  return updatedProducts;
+}
+
+// Load cached products and run a background scrape
+async function checkAndLoadShopifyCache() {
+  if (!currentTabUrl || !currentTabUrl.includes("/collections/")) {
+    return;
+  }
+  
+  try {
+    const cacheKey = `shopify_cache_${currentTabUrl}`;
+    const result = await chrome.storage.local.get([cacheKey, `sort_${currentTabUrl}`]);
+    const cachedData = result[cacheKey];
+    const savedSort = result[`sort_${currentTabUrl}`];
+    
+    if (cachedData && cachedData.products && cachedData.products.length > 0) {
+      if (shopifyOfflineBadge) {
+        shopifyOfflineBadge.classList.remove("hidden");
+        const formattedDate = new Date(cachedData.timestamp).toLocaleTimeString();
+        offlineBadgeText.textContent = `Viewing cached version (Scraped: ${formattedDate})`;
+      }
+      
+      if (savedSort && shopifySortSelect) {
+        shopifySortSelect.value = savedSort;
+      }
+      
+      await displayScrapedData(cachedData);
+      
+      btnAutoScrape.disabled = true;
+      btnAutoScrape.textContent = "Updating...";
+      chrome.tabs.sendMessage(currentTabId, { 
+        action: "START_AUTO_SCRAPE_ANIMATION", 
+        delay: 0
+      }).catch(err => {
+        console.warn("Silent background update failed:", err);
+        resetScrapeButton();
+      });
+    }
+  } catch (error) {
+    console.error("Error loading shopify cache:", error);
+  }
+}
+
+// Keyboard arrow key grid navigation
+function setupGridKeyboardNavigation() {
+  const cards = shopifyProductGrid.querySelectorAll(".product-card");
+  
+  cards.forEach(card => {
+    card.addEventListener("click", () => {
+      const url = card.dataset.url;
+      if (url) {
+        window.open(url, "_blank");
+      }
+    });
+    
+    card.addEventListener("keydown", (e) => {
+      const index = parseInt(card.dataset.index, 10);
+      
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const url = card.dataset.url;
+        if (url) {
+          window.open(url, "_blank");
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const next = shopifyProductGrid.querySelector(`.product-card[data-index="${index + 1}"]`);
+        if (next) next.focus();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prev = shopifyProductGrid.querySelector(`.product-card[data-index="${index - 1}"]`);
+        if (prev) prev.focus();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (cards.length > 0) {
+          const gridWidth = shopifyProductGrid.clientWidth;
+          const cardWidth = cards[0].clientWidth;
+          const itemsPerRow = Math.max(1, Math.floor(gridWidth / (cardWidth || 120)));
+          const target = shopifyProductGrid.querySelector(`.product-card[data-index="${index + itemsPerRow}"]`);
+          if (target) {
+            target.focus();
+          } else {
+            const last = shopifyProductGrid.querySelector(`.product-card[data-index="${cards.length - 1}"]`);
+            if (last) last.focus();
+          }
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (cards.length > 0) {
+          const gridWidth = shopifyProductGrid.clientWidth;
+          const cardWidth = cards[0].clientWidth;
+          const itemsPerRow = Math.max(1, Math.floor(gridWidth / (cardWidth || 120)));
+          const target = shopifyProductGrid.querySelector(`.product-card[data-index="${index - itemsPerRow}"]`);
+          if (target) {
+            target.focus();
+          } else {
+            const first = shopifyProductGrid.querySelector(`.product-card[data-index="0"]`);
+            if (first) first.focus();
+          }
+        }
+      }
+    });
+  });
+}
+
 function buildUIPreview(data) {
-  // If it's YouTube, show youtube custom section
-  if (data.isYouTube && data.youtube) {
+  // Hide all specific previews initially
+  ytDataView.classList.add("hidden");
+  generalDataView.classList.add("hidden");
+  if (shopifyCatalogView) shopifyCatalogView.classList.add("hidden");
+
+  // If it's Shopify Collection, show catalog grid
+  if (data.isShopifyCollection && data.products) {
+    if (shopifyCatalogView) {
+      shopifyCatalogView.classList.remove("hidden");
+      currentShopifyProducts = data.products;
+      renderShopifyCatalog();
+    }
+  } else if (data.isYouTube && data.youtube) {
     ytDataView.classList.remove("hidden");
     generalDataView.classList.add("hidden");
     
@@ -684,8 +961,18 @@ function buildOptimizedMarkdown(data) {
     md += `\n`;
   }
 
-  // YouTube structured layout
-  if (data.isYouTube && data.youtube) {
+  // Shopify Collection Table layout
+  if (data.isShopifyCollection && data.products) {
+    md += `## Shopify Products List (${data.products.length} products)\n\n`;
+    md += `| Title | Vendor | Price | Compare At Price | Image URL | Product URL |\n`;
+    md += `|---|---|---|---|---|---|\n`;
+    data.products.forEach(p => {
+      const comparePriceStr = p.compareAtPrice ? `Rs. ${p.compareAtPrice}` : "-";
+      md += `| ${p.title} | ${p.vendor} | Rs. ${p.price} | ${comparePriceStr} | [Image](${p.imageUrl}) | [Link](${p.productUrl}) |\n`;
+    });
+    md += `\n`;
+  } else if (data.isYouTube && data.youtube) {
+    // YouTube structured layout
     const yt = data.youtube;
     md += `## YouTube Video Details\n`;
     md += `- Uploader Channel: ${yt.channel || 'N/A'}\n`;

@@ -159,6 +159,37 @@
               <div id="youtube-specific-data" class="hidden">
                 <!-- Specialized YouTube data gets injected here -->
               </div>
+              
+              <!-- Specialized Shopify Catalog View -->
+              <div id="shopify-catalog-view" class="hidden">
+                <div class="catalog-controls">
+                  <div class="search-box-wrapper">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="shopify-search-input" placeholder="Search products..." aria-label="Search products">
+                  </div>
+                  <div class="sort-select-wrapper">
+                    <select id="shopify-sort-select" aria-label="Sort products">
+                      <option value="default">Default Order</option>
+                      <option value="price-low">Price: Low to High</option>
+                      <option value="price-high">Price: High to Low</option>
+                      <option value="alphabetical">Name: A to Z</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div id="shopify-offline-badge" class="offline-badge hidden">
+                  <span class="warning-icon">⚠️</span>
+                  <span id="offline-badge-text">Viewing offline cached version</span>
+                </div>
+                
+                <div id="shopify-product-grid" class="catalog-grid">
+                  <!-- Product cards will be injected dynamically -->
+                </div>
+              </div>
+
               <div id="general-scraped-data">
                 <!-- General page data details (Metadata, lists, etc) -->
               </div>

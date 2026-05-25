@@ -953,10 +953,80 @@ async function runSubsequentPagesAndFinish() {
   }
 }
 
+// Helper: check if webpage is a Shopify collection page
+function isShopifyCollectionPage() {
+  const isCollectionsUrl = window.location.pathname.includes('/collections/');
+  const isProductUrl = window.location.pathname.includes('/products/');
+  return isCollectionsUrl && !isProductUrl;
+}
+
 // Full pipeline execution block
 async function runFullScrapingPipeline(delay) {
   autoScrapeActive = true;
   
+  if (isShopifyCollectionPage()) {
+    try {
+      chrome.runtime.sendMessage({
+        action: "AUTO_SCRAPE_PROGRESS",
+        current: 1,
+        total: 1,
+        elementType: "Shopify JSON Catalog"
+      });
+
+      let cleanPath = window.location.pathname;
+      if (cleanPath.endsWith('/')) {
+        cleanPath = cleanPath.slice(0, -1);
+      }
+      const jsonUrl = `${window.location.origin}${cleanPath}.json?limit=250`;
+      
+      const response = await fetch(jsonUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+
+      if (data && data.products) {
+        scrapedAccumulator = {
+          url: window.location.href,
+          title: document.title,
+          isYouTube: false,
+          isShopifyCollection: true,
+          metadata: {
+            description: document.querySelector('meta[name="description"]')?.getAttribute('content') || ""
+          },
+          products: data.products.map(p => {
+            const featuredImage = p.images?.[0]?.src || p.featured_image?.src || "";
+            const firstVariant = p.variants?.[0] || {};
+            return {
+              id: p.id,
+              title: p.title,
+              handle: p.handle,
+              price: firstVariant.price ? parseFloat(firstVariant.price) : 0,
+              compareAtPrice: firstVariant.compare_at_price ? parseFloat(firstVariant.compare_at_price) : null,
+              imageUrl: featuredImage,
+              vendor: p.vendor || "",
+              productUrl: `${window.location.origin}/products/${p.handle}`
+            };
+          }),
+          headers: [],
+          lists: [],
+          tables: [],
+          links: [],
+          images: [],
+          paragraphs: [],
+          buttons: [],
+          inputs: [],
+          cards: [],
+          inlineTexts: [],
+          flow: []
+        };
+
+        finishVisualScrape();
+        return;
+      }
+    } catch (error) {
+      console.warn("Failed to fetch Shopify collection JSON, falling back to DOM scraping:", error);
+    }
+  }
+
   // Initialize result format
   scrapedAccumulator = {
     url: window.location.href,
